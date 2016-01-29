@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title></title>
+        <meta charset="utf-8">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#06122b">
+
+        <link href='http://fonts.googleapis.com/css?family=Ubuntu+Mono|Ubuntu:400,500|Ubuntu+Condensed' rel='stylesheet' type='text/css'>
+
+        <script src="../bower_components/webcomponentsjs/webcomponents-lite.js"></script>
+
+        <link rel="import" href="../bower_components/iron-flex-layout/classes/iron-flex-layout.html">
+        <link rel="import" href="../bower_components/paper-header-panel/paper-header-panel.html">
+        <link rel="import" href="../bower_components/paper-toolbar/paper-toolbar.html">
+        <link rel="import" href="../bower_components/paper-button/paper-button.html">
+
+        <script src="../bower_components/firebase/firebase.js"></script>
+
+        <style is="custom-style">
+          body {
+            background-color: #fdfffc;
+          }
+          .container {
+            padding: 10px;
+            border-bottom: solid 7px #e71d36;
+          }
+          h3 {
+            color: #2ec4b6;
+          }
+          h4 {
+
+          }
+          paper-button {
+            background-color: #ff9f1c;
+            color: #fdfffc;
+            width: 300px;
+            margin-top: 20px;
+            margin-bottom: 30px;
+            border-radius: 5px;
+          }
+        </style>
+    </head>
+
+    <body unresolved class="fullbleed layout vertical">
+      <paper-header-panel>
+        <paper-toolbar style="background-color: #001627">
+          <div style="width: 30px; height: 100%; background-color: #e71d36; margin-right: 15px;"></div>
+          <h2>Firebase Tester</h2>
+        </paper-toolbar>
+
+        <div class="layout vertical">
+          <div class="layout vertical container">
+            <h3>Sign-up Test</h3>
+
+            <p>Email</p>
+            <input type="text" id="signup_email">
+            <p>Password</p>
+            <input type="password" id="signup_password">
+            <paper-button type="button" onclick="signupFunction()" class="self-center">Signup</paper-button>
+
+            <div id="success_light" style="height:5px; width:15px; background-color:red;"></div>
+          </div>
+
+          <div class="layout vertical container">
+            <h3>Login Test</h3>
+
+            <p>Email</p>
+            <input type="text" id="login_email">
+            <p>Password</p>
+            <input type="password" id="login_password">
+            <paper-button type="button" onclick="loginFunction()" class="self-center">Login</paper-button>
+
+            <div id="login_light" style="height:5px; width:15px; background-color:red;"></div>
+            <div class="horizontal layout"><h5>Result:</h5><h5 id="login_result">blank</h5></div>
+          </div>
+
+          <div class="layout horizontal container">
+            <div class="flex-6 vertical layout">
+              <h4>retrieval test</h4>
+              <paper-button type="button" onclick="getData()" class="self-center">Get</paper-button>
+              <div id="get_light" style="height:5px; width:15px; background-color:red;"></div>
+              <h5 id="data_header"></h5>
+              <p id="data_body"></p>
+            </div>
+            <div class="flex-6 vertical layout">
+              <h4>saving test</h4>
+              <input type="text" id="save_stuff">
+              <paper-button type="button" onclick="saveData()" class="self-center">Save</paper-button>
+              <div id="save_light" style="height:5px; width:15px; background-color:red;"></div>
+            </div>
+          </div>
+        </div>
+      </paper-header-panel>
+
+        <script>
+        // function to create user login
+          function signupFunction() {
+            //this firebase reference is only local
+            var ref = new Firebase("https://comdotunity.firebaseio.com");
+            var uname = document.getElementById("signup_email").value;
+            var pass = document.getElementById("signup_password").value;
+            //this is simply a built in function in the firebase library
+            ref.createUser({
+              email: uname,
+              password: pass
+            }, function(error, userData) {
+              if (error) {
+                console.log("error creating user", error);
+              } else {
+                console.log("success!", userData.uid);
+                //conditional creation of new user branch in the Fdb
+                var usersRef = ref.child("users");
+                //firebase functions take arguments, the second of which is a callback function, in this set: we append since a UID does not exist yet
+                usersRef.child(userData.uid).set({
+                  did_it: "work?",
+                  karma: {place: "holder", place2: "holder"},
+                  rewards: {place: "holder", place2: "holder"}
+                });
+              }
+            });
+            document.getElementById("success_light").style.backgroundColor = "#32cd32";
+          }
+
+          function loginFunction() {
+            //this instance of Fdb is global as long as it has been initialized by clicking login once
+            refg = new Firebase("https://comdotunity.firebaseio.com");
+            //we can create variable containers to hold the data we put into input forms
+            //can also sub in the data from ruby db or otherwise
+            var uname = document.getElementById("login_email").value;
+            var pass = document.getElementById("login_password").value;
+            var holder = "blank";
+
+            refg.authWithPassword({
+              email: uname,
+              password: pass
+            }, function(error, authData) {
+              if(error) {
+                console.log("login-failed", error);
+                document.getElementById("login_result").innerHTML = error;
+              } else {
+                console.log("Login Success", authData);
+                holder = authData.uid;
+                //changing contents of an html tag
+                document.getElementById("login_result").innerHTML = holder;
+              }
+            });
+            document.getElementById("login_light").style.backgroundColor = "#32cd32";
+          }
+
+          function saveData() {
+            //example of chaining child requests
+            var saveSpot = refg.child("users").child("dummy").child("request");
+            var saveData = document.getElementById("save_stuff").value;
+
+            saveSpot.set({
+              user: "the DUDE",
+              title: "i have slightly mastered this",
+              data: saveData
+            });
+            document.getElementById("save_light").style.backgroundColor = "#32cd32";
+          }
+
+          function getData() {
+            var userdata = refg.child("users");
+            var dataHead = document.getElementById("data_header");
+            var databod = document.getElementById("data_body");
+
+            userdata.on("value", function(snapshot) {
+              //just a spot in the database
+                databod.innerHTML = snapshot.val().dummy.request.data;
+                console.log(snapshot.val());
+              }, function (errorObject) {
+                console.log("the read failed" + errorObject.code);
+              });
+
+            document.getElementById("get_light").style.backgroundColor = "#32cd32";
+          }
+        </script>
+    </body>
+
+</html>
